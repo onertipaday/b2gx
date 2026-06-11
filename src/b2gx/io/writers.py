@@ -51,3 +51,55 @@ def write_rich_table(anns: list[SequenceAnnotation], path: str | Path) -> None:
         "top_hit_desc": s.top_hit_desc or "",
     } for s in anns]
     pl.DataFrame(rows).write_parquet(path)
+
+
+def slim_map(go_id: str, dag: GODag, slim: set[str]) -> str | None:
+    if go_id in slim:
+        return go_id
+    ancestors = dag.ancestors(go_id)
+    candidates = ancestors & slim
+    if not candidates:
+        return None
+    # nearest by shortest path length in the child->parent graph
+    import networkx as nx
+    best, best_dist = None, None
+    for anc in candidates:
+        try:
+            d = nx.shortest_path_length(dag.graph, go_id, anc)
+        except nx.NetworkXNoPath:
+            continue
+        if best_dist is None or d < best_dist:
+            best, best_dist = anc, d
+    return best
+
+
+def write_summary(
+    anns: list[SequenceAnnotation], dag: GODag, n_subjects: int, n_resolved: int,
+    out_dir: str | Path, slim: set[str] | None = None,
+) -> None:
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    n_annotated = sum(1 for s in anns if s.assigned_gos)
+    total_go = sum(len(s.assigned_gos) for s in anns)
+    by_ns: dict[str, int] = {}
+    for s in anns:
+        for a in s.assigned_gos:
+            ns = dag.namespace(a.go_id) or "unknown"
+            by_ns[ns] = by_ns.get(ns, 0) + 1
+    frac = round(n_resolved / n_subjects, 4) if n_subjects else 0.0
+    lines = [
+        f"sequences_annotated\t{n_annotated}",
+        f"total_go_assignments\t{total_go}",
+        f"coverage_resolved_fraction\t{frac}",
+    ]
+    lines += [f"go_by_namespace.{ns}\t{c}" for ns, c in sorted(by_ns.items())]
+    (out / "summary.txt").write_text("\n".join(lines) + "\n")
+    if slim:
+        slim_rows = [
+            (s.seq_id, slim_map(a.go_id, dag, slim))
+            for s in anns for a in s.assigned_gos
+            if slim_map(a.go_id, dag, slim)
+        ]
+        pl.DataFrame(slim_rows, schema=["seq_id", "slim_go"], orient="row").write_csv(
+            out / "go_slim.tsv", separator="\t"
+        )

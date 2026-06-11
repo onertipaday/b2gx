@@ -1,6 +1,6 @@
 import polars as pl
 from b2gx.model import SequenceAnnotation, GOAssignment
-from b2gx.io.writers import write_clusterprofiler, write_annot
+from b2gx.io.writers import write_clusterprofiler, write_annot, write_summary, slim_map
 
 
 def _ann():
@@ -32,3 +32,16 @@ def test_write_annot(tmp_path):
     assert "Q1\tGO:CHILD" in lines
     assert "Q1\tEC:6.2.1.3" in lines
     assert "Q2\tGO:MID" in lines
+
+
+def test_slim_map(toy_dag):
+    slim = {"GO:ROOT", "GO:MID"}
+    assert slim_map("GO:CHILD", toy_dag, slim) == "GO:MID"
+    assert slim_map("GO:MID", toy_dag, slim) == "GO:MID"
+
+
+def test_write_summary(tmp_path, toy_dag):
+    write_summary(_ann(), toy_dag, n_subjects=10, n_resolved=7, out_dir=tmp_path)
+    text = (tmp_path / "summary.txt").read_text()
+    assert "sequences_annotated\t2" in text
+    assert "coverage_resolved_fraction\t0.7" in text
