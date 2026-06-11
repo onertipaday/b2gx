@@ -20,6 +20,9 @@ dependencies = [
 [project.scripts]
 b2gx = "b2gx.cli:app"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
