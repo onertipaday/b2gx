@@ -27,8 +27,17 @@ def run_pipeline(
 
     cand_by_seq, coverage = map_candidates(hits, index_parquet, params)
 
+    # KEGG subjects must use the SAME hit filter as GO mapping, so a hit rejected
+    # for GO transfer does not silently contribute KEGG KOs.
+    filtered_hits = (
+        hits.filter(pl.col("evalue") <= params.evalue_hit_filter)
+        .filter(pl.col("qcovhsp") >= params.hsp_coverage * 100.0)
+        .sort("evalue")
+        .group_by("qseqid", maintain_order=True)
+        .head(params.num_hits)
+    )
     subj_by_seq: dict[str, list[str]] = {}
-    for row in hits.iter_rows(named=True):
+    for row in filtered_hits.iter_rows(named=True):
         subj_by_seq.setdefault(row["qseqid"], []).append(row["sseqid"])
 
     anns: list[SequenceAnnotation] = []

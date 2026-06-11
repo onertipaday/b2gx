@@ -1,10 +1,13 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
+import logging
 import polars as pl
 from b2gx.config import AnnotationParams
 from b2gx.model import CandidateGO
 from b2gx.refdata.lookups import query_go
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -33,6 +36,16 @@ def map_candidates(
         return {}, Coverage(n_subjects=0, n_resolved=0)
     go_map = query_go(index_parquet, subjects)  # (refseq, go_id)
     resolved_subjects = set(go_map["refseq"].unique().to_list())
+
+    n_unresolved = len(subjects) - len(resolved_subjects)
+    if n_unresolved:
+        unresolved = sorted(set(subjects) - resolved_subjects)
+        preview = ", ".join(unresolved[:10])
+        suffix = ", ..." if n_unresolved > 10 else ""
+        logger.warning(
+            "%d of %d subject accessions did not resolve to any GO term: %s%s",
+            n_unresolved, len(subjects), preview, suffix,
+        )
 
     joined = filtered.join(
         go_map.rename({"refseq": "sseqid"}), on="sseqid", how="inner"

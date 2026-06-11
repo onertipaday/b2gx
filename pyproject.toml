@@ -1,7 +1,7 @@
 [project]
 name = "b2gx"
 version = "0.1.0"
-description = "Add your description here"
+description = "blast2go replicated in python"
 readme = "README.md"
 authors = [
     { name = "sonegop", email = "paolo.sonego@fmach.it" }

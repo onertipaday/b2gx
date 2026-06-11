@@ -8,8 +8,11 @@ _DTYPES = [pl.Utf8, pl.Utf8, pl.Float64, pl.Float64, pl.Int64, pl.Float64, pl.Fl
 
 def read_diamond(path: str | Path) -> pl.DataFrame:
     """Read DIAMOND outfmt6 with the b2gx-required 8 columns (incl. ppos, qcovhsp)."""
-    first = Path(path).open().readline().rstrip("\n")
-    if first and len(first.split("\t")) != len(COLUMNS):
+    with Path(path).open() as fh:
+        first = fh.readline().rstrip("\n")
+    if not first:
+        raise ValueError(f"DIAMOND file is empty: {path}")
+    if len(first.split("\t")) != len(COLUMNS):
         raise ValueError(
             f"expected 8 columns {COLUMNS}, got {len(first.split(chr(9)))}. "
             "Re-run DIAMOND with: -f 6 qseqid sseqid pident ppos length evalue bitscore qcovhsp"

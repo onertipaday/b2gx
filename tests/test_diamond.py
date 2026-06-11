@@ -25,3 +25,10 @@ def test_read_diamond_rejects_wrong_column_count(tmp_path):
     p = _write(tmp_path, [["WP_q.1", "WP_s.1", 70.0]])
     with pytest.raises(ValueError, match="expected 8 columns"):
         read_diamond(p)
+
+
+def test_read_diamond_rejects_empty_file(tmp_path):
+    p = tmp_path / "empty.tsv"
+    p.write_text("")
+    with pytest.raises(ValueError, match="empty"):
+        read_diamond(p)
