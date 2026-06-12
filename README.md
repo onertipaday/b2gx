@@ -56,14 +56,19 @@ apptainer exec -B /mnt/nfs3/sonegop /mnt/nfs3/sonegop/images/apptainer/b2gx.sif 
 Outputs (in `out_dir` from `run.yaml`): `go_term2gene.tsv`, `go_term2name.tsv`,
 `kegg_term2gene.tsv`, `annotation.annot`, `annotation.parquet`, `summary.txt`.
 
-## Known limitations (follow-up work)
+## Known limitations
 
-- **KEGG KO/pathway is not yet wired into `run`.** The pipeline supports KEGG
-  (`assign_kegg`), but the CLI does not yet build the `acc2ko` / `ko2path` maps
-  from the UniProt idmapping KEGG column, so `kegg_ko` / `kegg_pathways` are
-  currently empty on a real run and `kegg_term2gene.tsv` is header-only. EC (via
-  `ec2go`) and GO are fully wired. This was the deferred "fragile point" in the
-  design (spec §5).
+- **KEGG KO/pathway is intentionally descoped — not a TODO.** The original design
+  assumed UniProt `idmapping_selected.tab.gz` carried KEGG/KO columns; it does
+  **not** (its 22 columns have no KEGG, KO, or EC field — col 18 is EMBL-CDS).
+  `idmapping.dat.gz` exposes only KEGG *gene* IDs, and going gene→KO→pathway
+  requires the KEGG REST API, which is excluded for licensing. So KO/pathway
+  cannot be transferred license-free by homology and `b2gx` does not emit them:
+  `kegg_ko` / `kegg_pathways` stay empty and `kegg_term2gene.tsv` is header-only.
+  GO and EC (via `ec2go`) are fully wired. To add KO for downstream
+  clusterProfiler KEGG enrichment, run **KofamScan** (KOfam HMMs, license-clean)
+  separately and join its KO calls on `seq_id`. The `assign_kegg` plumbing is
+  retained dormant so such a KO source can be wired in without code changes.
 - **`interpro2go` is fetched but unused.** GO terms come from the InterProScan
   TSV's own GO column; the standalone `interpro2go` IPR→GO map is reserved for a
   future "map raw IPR domains without a full InterProScan run" path.
