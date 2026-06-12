@@ -27,19 +27,23 @@ cd "$DATA"
 # drop any 0-byte remnants from the failed run
 find . -maxdepth 1 -type f -size 0 -delete
 
+# eggnog5 drops large connections mid-transfer; wget -c resumes partials and
+# --tries=0 retries indefinitely so a dropped connection doesn't fail the job.
+get() { wget -c --tries=0 --waitretry=10 --retry-connrefused --read-timeout=120 -O "$2" "$1"; }
+
 # eggnog.db (annotations)
 if [[ ! -s eggnog.db ]]; then
-  curl -L --fail -C - -o eggnog.db.gz "$BASE/eggnog.db.gz"
+  get "$BASE/eggnog.db.gz" eggnog.db.gz
   gunzip -f eggnog.db.gz
 fi
 # eggnog_proteins.dmnd (diamond seed db)
 if [[ ! -s eggnog_proteins.dmnd ]]; then
-  curl -L --fail -C - -o eggnog_proteins.dmnd.gz "$BASE/eggnog_proteins.dmnd.gz"
+  get "$BASE/eggnog_proteins.dmnd.gz" eggnog_proteins.dmnd.gz
   gunzip -f eggnog_proteins.dmnd.gz
 fi
 # eggnog.taxa.db + traverse pkl
 if [[ ! -s eggnog.taxa.db ]]; then
-  curl -L --fail -C - -o eggnog.taxa.tar.gz "$BASE/eggnog.taxa.tar.gz"
+  get "$BASE/eggnog.taxa.tar.gz" eggnog.taxa.tar.gz
   tar -zxf eggnog.taxa.tar.gz && rm -f eggnog.taxa.tar.gz
 fi
 
