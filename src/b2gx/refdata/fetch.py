@@ -7,6 +7,10 @@ import urllib.request
 
 CHUNK = 1 << 20
 
+# Cloudflare (purl.obolibrary.org, current.geneontology.org) returns HTTP 403 for
+# the default "Python-urllib/x.y" User-Agent, so send an explicit one.
+USER_AGENT = "b2gx/0.1 (+https://github.com/onertipaday/b2gx)"
+
 # Default source URLs (used by the CLI `fetch` command on an internet node).
 SOURCES = {
     "go_basic": "https://purl.obolibrary.org/obo/go/go-basic.obo",
@@ -28,7 +32,8 @@ def sha256_file(path: str | Path) -> str:
 def download(url: str, dest: str | Path) -> None:
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url) as r, dest.open("wb") as out:  # noqa: S310
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310
+    with urllib.request.urlopen(req) as r, dest.open("wb") as out:  # noqa: S310
         while chunk := r.read(CHUNK):
             out.write(chunk)
 
