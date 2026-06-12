@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SIF=/mnt/nfs3/sonegop/images/apptainer/eggnog-mapper.sif
-DATA=/mnt/scratch2/sonegop/references/eggnog
+DATA=/mnt/nfs3/sonegop/references/eggnog_db   # pre-existing emapperdb-5.0.2
 PROJ=/mnt/nfs3/sonegop/projects/b2gx
 FAA="$PROJ/references/GCF_023558375.1/protein.faa"
 OUT="$PROJ/runs/chroococcidiopsis/eggnog"
