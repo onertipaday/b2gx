@@ -58,6 +58,19 @@ Outputs (in `out_dir` from `run.yaml`): `go_term2gene.tsv`, `go_term2name.tsv`,
 
 ## Known limitations
 
+- **GO coverage is bounded by UniProt idmapping, which is thin for prokaryotes.**
+  In the Chroococcidiopsis `GCF_023558375.1` acceptance run (5,627 proteins,
+  DIAMOND vs nr), only **~10%** of DIAMOND subject accessions resolved to GO and
+  3,207/5,627 sequences were annotated. This is a source-coverage ceiling, not a
+  bug: subject accessions and the index keys are both versioned and match (a
+  resolvable WP_ maps correctly), but of 70,144 unique RefSeq subjects only 12,509
+  (17.8%) are present in `idmapping_selected.tab.gz`, and the ~53k GenBank-type
+  subjects (e.g. `AAT41948.1`) are not keyed at all. The `mapping` stage emits a
+  coverage report so this is always visible. **Roadmap (TODO):** add the design's
+  noted RefSeq-native supplement — NCBI `gene2accession → gene2go` — to map RefSeq
+  protein accessions to GO directly; this lifts coverage substantially for
+  bacteria/archaea. A cheaper partial step is to also key the index on the UniProt
+  EMBL-CDS column so GenBank-type subjects resolve via UniProt.
 - **KEGG KO/pathway is intentionally descoped — not a TODO.** The original design
   assumed UniProt `idmapping_selected.tab.gz` carried KEGG/KO columns; it does
   **not** (its 22 columns have no KEGG, KO, or EC field — col 18 is EMBL-CDS).
