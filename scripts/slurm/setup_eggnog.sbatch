@@ -24,12 +24,24 @@ if [[ ! -s "$EGGNOG_SIF" ]]; then
 fi
 
 cd "$DATA"
-# drop any 0-byte remnants from the failed run
-find . -maxdepth 1 -type f -size 0 -delete
 
-# eggnog5 drops large connections mid-transfer; wget -c resumes partials and
-# --tries=0 retries indefinitely so a dropped connection doesn't fail the job.
-get() { wget -c --tries=0 --waitretry=10 --retry-connrefused --read-timeout=120 -O "$2" "$1"; }
+# eggnog5 drops large connections mid-transfer. Start each file clean (a stale
+# cross-tool partial makes wget -c wrongly conclude "already fully retrieved"),
+# then loop wget -c until the local size matches the server's Content-Length.
+get() {
+  local url=$1 out=$2 i exp got
+  exp=$(curl -sIL --max-time 30 "$url" \
+        | awk 'BEGIN{IGNORECASE=1}/^content-length:/{v=$2} END{gsub(/\r/,"",v);print v}')
+  [[ -z "$exp" ]] && { echo "no Content-Length for $url"; return 1; }
+  rm -f "$out"
+  for i in $(seq 1 50); do
+    wget -c --read-timeout=120 -O "$out" "$url" || true
+    got=$(stat -c%s "$out" 2>/dev/null || echo 0)
+    [[ "$got" == "$exp" ]] && { echo "$out complete ($got bytes)"; return 0; }
+    echo "attempt $i: $got/$exp bytes for $out; retrying"; sleep 10
+  done
+  return 1
+}
 
 # eggnog.db (annotations)
 if [[ ! -s eggnog.db ]]; then
