@@ -3,17 +3,26 @@ from pathlib import Path
 import re
 
 _EC_RE = re.compile(r"EC:([0-9.\-]+)")
+_GO_ID_RE = re.compile(r"GO:\d{7}")
 
 
 def parse_ec2go(path: str | Path) -> dict[str, set[str]]:
+    """Build a GO-id -> {EC number} map from a GO external2go ec2go file.
+
+    File layout is ``EC:<number> > GO:<name> ; GO:<id>`` (EC on the left, GO on
+    the right). The right side's GO *name* is also "GO:"-prefixed, so the actual
+    term is matched as the 7-digit GO id after the ";".
+    """
     m: dict[str, set[str]] = {}
     for line in Path(path).read_text().splitlines():
         if line.startswith("!") or ">" not in line:
             continue
         left, right = line.split(">", 1)
-        go = left.strip().split()[0]
-        ecs = set(_EC_RE.findall(right))
-        if go.startswith("GO:") and ecs:
+        ecs = set(_EC_RE.findall(left))
+        go_ids = set(_GO_ID_RE.findall(right))
+        if not ecs or not go_ids:
+            continue
+        for go in go_ids:
             m.setdefault(go, set()).update(ecs)
     return m
 

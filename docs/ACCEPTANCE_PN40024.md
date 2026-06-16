@@ -1,0 +1,87 @@
+# b2gx vs Blast2GO — *Vitis vinifera* PN40024 (T2T 5.1)
+
+Second acceptance run: b2gx end-to-end on the grapevine reference proteome,
+compared against an existing **Blast2GO** annotation of the same proteins. Run on
+the HPC cluster (SLURM `cpu` partition), 2026-06-12, job 412003.
+
+## Inputs
+
+| Item | Value |
+|---|---|
+| Genome | `T2T_ref.fasta` (20 chromosomes) |
+| Annotation | `PN40024_5.1_on_T2T_ref.gff3` (47,971 genes / 48,976 mRNAs) |
+| Proteins | `gffread -y` → 48,976 proteins, renamed `<mRNA>_CDS1.prot` to match Blast2GO IDs |
+| Search DB | NCBI **nr** → DIAMOND `nr.dmnd` (371 GB), `diamond blastp` (default sensitivity) |
+| acc→GO map | UniProt `idmapping_selected.tab.gz` → `acc2go.parquet` (RefSeq key) |
+| GO DAG | `go-basic.obo` |
+| Reference | `PN40024_T2T_5.1_ref_blast2go.annot` (Blast2GO: blastp-vs-nr + InterProScan + EC) |
+
+ID alignment is exact: all 26,548 Blast2GO-annotated sequences are among the
+48,976 b2gx proteins (100% intersection), so concordance compares like-for-like.
+
+## Coverage (protein-level, of 48,976 proteins)
+
+| Metric | b2gx | Blast2GO |
+|---|---|---|
+| Proteins with DIAMOND hits | 42,227 (86.2%) | — |
+| Proteins annotated (≥1 GO) | **14,890 (30.4%)** | **26,548 (54.2%)** |
+| Total GO assignments | 56,643 | 80,536 |
+| GO by namespace (BP / MF / CC) | 17,587 / 23,385 / 15,342 | — |
+| EC numbers | **0** | 13,218 |
+| InterPro domains | 0 (no InterProScan run) | present |
+| `coverage_resolved_fraction` | 0.059 | — |
+
+## Concordance (ancestor-aware GO Jaccard)
+
+GO sets propagated to ancestors before comparison. Independent evidence, so this
+measures **concordance, not identity**.
+
+| Category | Count |
+|---|---|
+| Proteins both annotate | **13,536** |
+| b2gx-only | 1,354 |
+| Blast2GO-only | 13,012 |
+
+| Jaccard (13,536 both-annotated) | Value |
+|---|---|
+| Mean / median | **0.411 / 0.429** |
+| p25 / p75 | 0.136 / 0.647 |
+| ≥ 0.5 | 5,790 (43%) |
+| ≥ 0.8 | 1,490 (11%) |
+| Exact 0 | 2,497 (18%) |
+| Mean over all b2gx-annotated | 0.373 |
+
+**Reading.** Where both tools annotate, the median ancestor-aware Jaccard is
+~0.43 — the same biological neighborhood, consistent with the eggNOG-mapper
+benchmark on Chroococcidiopsis (0.47). The 18% exact-zero tail is mostly proteins
+where the two tools transferred GO from different evidence (e.g. b2gx homology vs
+Blast2GO InterPro-domain GO) with no ancestor overlap.
+
+## Why b2gx annotates fewer proteins than Blast2GO
+
+b2gx covers 56% of what Blast2GO annotates (14,890 vs 26,548). Three causes, in
+order of impact:
+
+1. **acc→GO ceiling (largest).** 429,912 of 456,910 distinct nr subject
+   accessions (94%) do not resolve to any GO term. nr returns many
+   GenBank/PDB/non-RefSeq subjects (`1WH9_A`, `KAG…`, `WKA…`) that the
+   RefSeq-keyed `acc2go.parquet` cannot map. Same limitation documented for the
+   Chroococcidiopsis run; roadmap fix is the NCBI `gene2accession → gene2go`
+   supplement plus keying on the idmapping EMBL-CDS (GenBank) column.
+2. **No InterProScan.** Blast2GO merges InterProScan domain GO (the reference
+   `.tsv` carries an `InterPro GO ID` column); this run was homology-only
+   (`interpro` empty), so b2gx misses proteins whose only GO comes from domains.
+3. **EC not emitted.** b2gx produced 0 EC despite 56,643 GO assignments. The
+   `ec2go` file is loaded but the EC column is empty in both this and the
+   Chroococcidiopsis run — a wiring gap in the EC-assignment step to investigate,
+   not a data-source limitation.
+
+## Reproduce
+
+```bash
+# on the cluster, from /mnt/nfs3/sonegop/projects/b2gx
+#  - proteins: gffread -y from T2T_ref.fasta + PN40024_5.1_on_T2T_ref.gff3,
+#    headers renamed <mRNA>_CDS1.prot
+sbatch scripts/slurm/e2e_pn40024.sbatch   # DIAMOND vs nr -> b2gx run -> concordance
+# outputs: runs/pn40024/{hits.tsv, out/, concordance_vs_blast2go.tsv}
+```

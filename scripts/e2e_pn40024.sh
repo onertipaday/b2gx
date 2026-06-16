@@ -1,26 +1,28 @@
 #!/usr/bin/env bash
-# End-to-end acceptance run on Chroococcidiopsis GCF_023558375.1 (5,627 proteins).
-# Runs on the HPC cluster (needs nr + the b2gx reference cache). CPU partition.
+# End-to-end run on Vitis vinifera PN40024 (T2T 5.1, 48,976 proteins).
+# DIAMOND blastp vs nr -> b2gx run. Mirrors the Chroococcidiopsis acceptance
+# pipeline so results are directly comparable. CPU partition, no time limit.
 set -euo pipefail
 
 SIF=/mnt/nfs3/sonegop/images/apptainer/b2gx.sif
 DIAMOND_SIF=/mnt/nfs3/sonegop/images/apptainer/diamond.sif
 CACHE=/mnt/nfs3/sonegop/refdata/b2gx
 PROJ=/mnt/nfs3/sonegop/projects/b2gx
-FAA="$PROJ/references/GCF_023558375.1/protein.faa"
-WORK="$PROJ/runs/chroococcidiopsis"
+FAA="$PROJ/references/PN40024/protein.faa"
+WORK="$PROJ/runs/pn40024"
 NR=/mnt/scratch2/sonegop/references/nr.dmnd
 BINDS="-B /mnt/nfs3/sonegop -B /mnt/scratch2/sonegop"
 mkdir -p "$WORK"
 
-# 1. DIAMOND blastp vs nr (required columns incl. ppos, qcovhsp).
+# 1. DIAMOND blastp vs nr (same columns as the Chroococcidiopsis run).
 if [[ ! -s "$WORK/hits.tsv" ]]; then
   apptainer exec $BINDS "$DIAMOND_SIF" \
     diamond blastp -d "$NR" -q "$FAA" \
     -f 6 qseqid sseqid pident ppos length evalue bitscore qcovhsp \
     -o "$WORK/hits.tsv" -p 32 --quiet \
-    || { echo "DIAMOND failed or nr missing ($NR); produce $WORK/hits.tsv separately and re-run"; exit 1; }
+    || { echo "DIAMOND failed or nr missing ($NR)"; exit 1; }
 fi
+echo "=== DIAMOND hits: $(wc -l < "$WORK/hits.tsv") rows, $(cut -f1 "$WORK/hits.tsv" | sort -u | wc -l) queries with hits ==="
 
 # 2. b2gx run.
 cat > "$WORK/run.yaml" <<YAML

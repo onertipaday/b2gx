@@ -2,15 +2,18 @@ from b2gx.stages.eckegg import parse_ec2go, assign_ec, assign_kegg
 
 
 def test_parse_ec2go(tmp_path):
+    # Real GO external2go/ec2go layout: EC on the left, GO name+id on the right.
+    # The right-hand side's GO *name* is itself prefixed "GO:", so only the
+    # 7-digit GO id (after ";") is the actual term.
     p = tmp_path / "ec2go"
     p.write_text(
         "! comment line\n"
-        "GO:0004321 glutamate... > EC:6.2.1.3 ; EC 6.2.1.3\n"
-        "GO:0003824 catalytic activity > EC:1 ; EC 1\n"
+        "EC:6.2.1.3 > GO:long-chain fatty acid-CoA ligase activity ; GO:0004321\n"
+        "EC:1.-.-.- > GO:oxidoreductase activity ; GO:0016491\n"
     )
     m = parse_ec2go(p)
     assert m["GO:0004321"] == {"6.2.1.3"}
-    assert m["GO:0003824"] == {"1"}
+    assert m["GO:0016491"] == {"1.-.-.-"}
 
 
 def test_assign_ec_from_assigned_gos():
