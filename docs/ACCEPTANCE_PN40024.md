@@ -2,7 +2,8 @@
 
 Second acceptance run: b2gx end-to-end on the grapevine reference proteome,
 compared against an existing **Blast2GO** annotation of the same proteins. Run on
-the HPC cluster (SLURM `cpu` partition), 2026-06-12, job 412003.
+the HPC cluster (SLURM `cpu` partition), 2026-06-12, job 412003 (GO/coverage);
+EC re-run 2026-06-16, job 412050 after `parse_ec2go` inversion fix (commit 74c4ef3).
 
 ## Inputs
 
@@ -27,7 +28,7 @@ ID alignment is exact: all 26,548 Blast2GO-annotated sequences are among the
 | Proteins annotated (≥1 GO) | **14,890 (30.4%)** | **26,548 (54.2%)** |
 | Total GO assignments | 56,643 | 80,536 |
 | GO by namespace (BP / MF / CC) | 17,587 / 23,385 / 15,342 | — |
-| EC numbers | **0** | 13,218 |
+| EC numbers | **5,051 seqs / 13,986 lines / 1,008 unique** | 13,218 |
 | InterPro domains | 0 (no InterProScan run) | present |
 | `coverage_resolved_fraction` | 0.059 | — |
 
@@ -71,10 +72,11 @@ order of impact:
 2. **No InterProScan.** Blast2GO merges InterProScan domain GO (the reference
    `.tsv` carries an `InterPro GO ID` column); this run was homology-only
    (`interpro` empty), so b2gx misses proteins whose only GO comes from domains.
-3. **EC not emitted.** b2gx produced 0 EC despite 56,643 GO assignments. The
-   `ec2go` file is loaded but the EC column is empty in both this and the
-   Chroococcidiopsis run — a wiring gap in the EC-assignment step to investigate,
-   not a data-source limitation.
+3. **EC gap narrowed.** After the `parse_ec2go` fix, b2gx assigns EC to 5,051
+   sequences (10.3% of proteome, 1,008 unique EC numbers, 13,986 `.annot` lines)
+   vs Blast2GO's 13,218. The remaining gap is the same acc→GO ceiling: proteins
+   with no resolved GO also receive no EC via `ec2go`; InterProScan-derived EC
+   (present in the Blast2GO reference) is outside scope.
 
 ## Reproduce
 
