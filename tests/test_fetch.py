@@ -1,8 +1,13 @@
+import gzip
 import io
 import json
 import urllib.request
+import polars as pl
 from b2gx.refdata import fetch
-from b2gx.refdata.fetch import download, sha256_file, write_manifest, verify_manifest
+from b2gx.refdata.fetch import (
+    SOURCES, download, sha256_file, write_manifest, verify_manifest,
+    build_reference_cache,
+)
 
 
 def test_download_sends_user_agent(tmp_path, monkeypatch):
@@ -41,3 +46,54 @@ def test_verify_detects_tampering(tmp_path):
     f.write_text("tampered\n")
     problems = verify_manifest(manifest)
     assert problems and "go_basic" in problems[0]
+
+
+def test_sources_include_ncbi_gene2go_supplement():
+    assert SOURCES["gene2accession"] == "https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2accession.gz"
+    assert SOURCES["gene2go"] == "https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2go.gz"
+
+
+def test_build_reference_cache(tmp_path, monkeypatch):
+    """Stub out network downloads; verify the merged acc2go.parquet and manifest."""
+    payloads = {
+        "go-basic.obo": b"format-version: 1.2\n",
+        "interpro2go": b"!comment\n",
+        "ec2go": b"!comment\n",
+    }
+
+    idmap_row = ["P1", "ID", "1", "WP_idmap.1", "", "", "GO:0000001"] + [""] * 15
+    idmap_buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=idmap_buf, mode="wb") as gz:
+        gz.write(("\t".join(idmap_row) + "\n").encode())
+    payloads["idmapping_selected.tab.gz"] = idmap_buf.getvalue()
+
+    g2a_buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=g2a_buf, mode="wb") as gz:
+        gz.write(b"#tax_id\tGeneID\tstatus\tRNA\tRNA_gi\tprotein_accession.version\n")
+        gz.write(b"1\t100\tPROVISIONAL\t-\t-\tWP_gene2go.1\n")
+    payloads["gene2accession.gz"] = g2a_buf.getvalue()
+
+    g2g_buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=g2g_buf, mode="wb") as gz:
+        gz.write(b"#tax_id\tGeneID\tGO_ID\tEvidence\tQualifier\tGO_term\tPubMed\tCategory\n")
+        gz.write(b"1\t100\tGO:0000002\tIEA\t-\tx\t-\tProcess\n")
+    payloads["gene2go.gz"] = g2g_buf.getvalue()
+
+    def fake_download(url, dest):
+        from pathlib import Path
+        name = Path(url).name
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        Path(dest).write_bytes(payloads[name])
+
+    monkeypatch.setattr(fetch, "download", fake_download)
+    build_reference_cache(tmp_path)
+
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    assert set(manifest) == {
+        "go_basic", "interpro2go", "ec2go", "idmapping", "gene2accession", "gene2go",
+    }
+
+    final = pl.read_parquet(tmp_path / "acc2go.parquet")
+    accs_gos = set(zip(final["acc"], final["go_id"]))
+    assert ("WP_idmap.1", "GO:0000001") in accs_gos  # from UniProt idmapping
+    assert ("WP_gene2go.1", "GO:0000002") in accs_gos  # from NCBI gene2go join

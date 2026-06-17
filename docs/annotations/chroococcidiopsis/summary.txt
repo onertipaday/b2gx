@@ -1,0 +1,7 @@
+sequences_annotated	3370
+total_go_assignments	10532
+coverage_resolved_fraction	0.1253
+go_by_namespace.biological_process	2908
+go_by_namespace.cellular_component	1908
+go_by_namespace.molecular_function	5599
+go_by_namespace.unknown	117

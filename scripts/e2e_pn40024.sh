@@ -11,7 +11,10 @@ PROJ=/mnt/nfs3/sonegop/projects/b2gx
 FAA="$PROJ/references/PN40024/protein.faa"
 WORK="$PROJ/runs/pn40024"
 NR=/mnt/scratch2/sonegop/references/nr.dmnd
-BINDS="-B /mnt/nfs3/sonegop -B /mnt/scratch2/sonegop"
+# b2gx.sif's baked-in src predates the gene2go/EMBL-CDS index expansion; bind
+# the current source tree over it (editable install) until the image is
+# rebuilt via build_image.sbatch.
+BINDS="-B /mnt/nfs3/sonegop -B /mnt/scratch2/sonegop -B $PROJ/src:/opt/b2gx/src"
 mkdir -p "$WORK"
 
 # 1. DIAMOND blastp vs nr (same columns as the Chroococcidiopsis run).

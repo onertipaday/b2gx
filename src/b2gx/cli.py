@@ -50,20 +50,10 @@ def run(
 def fetch(
     cache_dir: Path = typer.Option(..., "--cache-dir"),
 ) -> None:
-    """Download reference DBs to the cache and build the accession index."""
-    from b2gx.refdata.fetch import SOURCES, download, write_manifest
-    from b2gx.refdata.lookups import build_accession_index
+    """Download reference DBs to the cache and build the merged accession index."""
+    from b2gx.refdata.fetch import build_reference_cache
 
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    entries: dict[str, dict] = {}
-    for key, url in SOURCES.items():
-        dest = cache_dir / Path(url).name
-        typer.echo(f"Downloading {key} <- {url}")
-        download(url, dest)
-        entries[key] = {"path": str(dest), "url": url}
-    write_manifest(cache_dir / "manifest.json", entries)
-    idmap = Path(entries["idmapping"]["path"])
-    build_accession_index(idmap, cache_dir / "acc2go.parquet")
+    build_reference_cache(cache_dir)
     typer.echo(f"Reference cache ready in {cache_dir}")
 
 

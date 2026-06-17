@@ -10,8 +10,12 @@ set -euo pipefail
 
 SIF=/mnt/nfs3/sonegop/images/apptainer/b2gx.sif
 CACHE=/mnt/nfs3/sonegop/refdata/b2gx
+PROJ=/mnt/nfs3/sonegop/projects/b2gx
 
-apptainer exec -B /mnt/nfs3/sonegop "$SIF" \
+# b2gx.sif's baked-in src predates the gene2go/EMBL-CDS index expansion; bind
+# the current source tree over it (editable install) until the image is
+# rebuilt via build_image.sbatch.
+apptainer exec -B /mnt/nfs3/sonegop -B "$PROJ/src:/opt/b2gx/src" "$SIF" \
   b2gx fetch --cache-dir "$CACHE"
 
 echo "=== reference cache ready in $CACHE ==="

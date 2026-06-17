@@ -16,7 +16,7 @@ def test_map_candidates_and_coverage(tmp_path):
     })
     idx = tmp_path / "acc2go.parquet"
     pl.DataFrame({
-        "refseq": ["WP_s.1", "WP_s.1", "WP_z.1"],
+        "acc": ["WP_s.1", "WP_s.1", "WP_z.1"],
         "go_id": ["GO:0008150", "GO:0003674", "GO:0005575"],
     }).write_parquet(idx)
 
@@ -33,6 +33,6 @@ def test_evalue_filter_drops_weak_hits(tmp_path):
         "length": [100], "evalue": [1e-3], "bitscore": [40.0], "qcovhsp": [80.0],
     })
     idx = tmp_path / "i.parquet"
-    pl.DataFrame({"refseq": ["WP_s.1"], "go_id": ["GO:0008150"]}).write_parquet(idx)
+    pl.DataFrame({"acc": ["WP_s.1"], "go_id": ["GO:0008150"]}).write_parquet(idx)
     cand_by_seq, _ = map_candidates(hits, idx, AnnotationParams())  # cutoff 1e-6
     assert cand_by_seq == {}

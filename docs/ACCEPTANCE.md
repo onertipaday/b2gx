@@ -31,6 +31,28 @@ RefSeq subject accessions only **12,509 (17.8%)** appear in UniProt idmapping, a
 the ~53k GenBank-type subjects (e.g. `AAT41948.1`) are not keyed at all. Roadmap
 fix: NCBI `gene2accession → gene2go` supplement (see README "Known limitations").
 
+## Update 2026-06-17 — expanded reference index
+
+Rebuilt `acc2go.parquet` to also key UniProt idmapping on the EMBL-CDS
+(GenBank-accession) column and merge in an NCBI `gene2accession → gene2go`
+supplement (193.2M unique accessions vs 56.4M before — 3.4×). Rerun on the
+same DIAMOND hits (job 412099):
+
+| Metric | Before | After |
+|---|---|---|
+| Sequences annotated (≥1 GO) | 3,207 / 5,627 (57.0%) | **3,370 / 5,627 (59.9%)** |
+| Total GO assignments | 9,810 | 10,532 |
+| `coverage_resolved_fraction` | 0.102 | **0.125** |
+| Sequences with EC | unverified pre-fix | 1,682 |
+
+Modest lift for this organism — most bacterial RefSeq accessions were already
+resolvable via UniProt idmapping alone, so the gene2go/EMBL-CDS supplement
+helps less here than for eukaryotic GenBank-style accessions (see the much
+larger PN40024 lift in `docs/ACCEPTANCE_PN40024.md`). eggNOG-mapper
+concordance below was not rerun against the expanded index. Ready-to-use
+annotation outputs (Blast2GO-style `.annot` + clusterProfiler tables) for
+this run are saved at `docs/annotations/chroococcidiopsis/`.
+
 ## eggNOG-mapper concordance
 
 eggNOG and b2gx use different evidence (orthology vs homology-transfer), so this

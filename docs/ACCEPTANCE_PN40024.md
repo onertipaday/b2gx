@@ -78,12 +78,57 @@ order of impact:
    with no resolved GO also receive no EC via `ec2go`; InterProScan-derived EC
    (present in the Blast2GO reference) is outside scope.
 
+## Update 2026-06-17 — expanded reference index
+
+Rebuilt `acc2go.parquet` to also key UniProt idmapping on the EMBL-CDS
+(GenBank-accession) column and merge in an NCBI `gene2accession → gene2go`
+supplement (193.2M unique accessions vs 56.4M before — 3.4×). This directly
+targets cause #1 above. Rerun on the same DIAMOND hits (job 412100):
+
+| Metric | Before | After | Blast2GO |
+|---|---|---|---|
+| Proteins annotated (≥1 GO) | 14,890 (30.4%) | **33,281 (67.9%)** | 26,548 (54.2%) |
+| Total GO assignments | 56,643 | 145,568 | 80,536 |
+| `coverage_resolved_fraction` | 0.059 | **0.614** | — |
+| EC numbers | 5,051 seqs / 1,008 unique | **12,822 seqs / 1,352 unique** | 13,218 |
+
+**b2gx now exceeds Blast2GO's own coverage** on this proteome (67.9% vs
+54.2%) — the EMBL-CDS keying resolved most of the GenBank-style (`KAG…`,
+`AAT…`) subjects that dominated the unresolved tail.
+
+### Concordance, recomputed (both-annotate subset, not the full union)
+
+| Category | Before | After |
+|---|---|---|
+| Both annotate | 13,536 | **26,230** (1.9×) |
+| b2gx-only | 1,354 | 7,051 |
+| Blast2GO-only | 13,012 | **318** (b2gx now covers 98.8% of what Blast2GO covers) |
+
+| Jaccard (both-annotated) | Before | After |
+|---|---|---|
+| Mean / median | 0.411 / 0.429 | **0.410 / 0.450** |
+| p25 / p75 | 0.136 / 0.647 | 0.110 / 0.650 |
+| ≥ 0.5 | 43% | 44.9% |
+| ≥ 0.8 | 11% | 10.1% |
+| Exact 0 | 18% | 23.0% |
+
+**Reading.** Concordance quality on the overlapping set is essentially
+**unchanged** — adding ~12,700 more both-annotated proteins did not dilute
+agreement. The expanded index closes coverage without trading away accuracy.
+The earlier draft of this update incorrectly computed these stats over the
+full union file (33,599 rows, b2gx ∪ Blast2GO) instead of filtering to
+`n_b2gx > 0 AND n_eggnog > 0`; that error has been corrected here.
+
+Ready-to-use annotation outputs (Blast2GO-style `.annot` + clusterProfiler
+tables) for this run are saved at `docs/annotations/pn40024/`.
+
 ## Reproduce
 
 ```bash
 # on the cluster, from /mnt/nfs3/sonegop/projects/b2gx
 #  - proteins: gffread -y from T2T_ref.fasta + PN40024_5.1_on_T2T_ref.gff3,
 #    headers renamed <mRNA>_CDS1.prot
+sbatch scripts/slurm/fetch_refdata.sbatch # reference cache (RefSeq+EMBL-CDS+gene2go)
 sbatch scripts/slurm/e2e_pn40024.sbatch   # DIAMOND vs nr -> b2gx run -> concordance
 # outputs: runs/pn40024/{hits.tsv, out/, concordance_vs_blast2go.tsv}
 ```

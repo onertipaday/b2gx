@@ -13,7 +13,7 @@ def test_run_pipeline_end_to_end(tmp_path, toy_dag):
     })
     idx = tmp_path / "acc2go.parquet"
     pl.DataFrame({
-        "refseq": ["WP_s.1", "WP_z.1"],
+        "acc": ["WP_s.1", "WP_z.1"],
         "go_id": ["GO:CHILD", "GO:CHILD2"],
     }).write_parquet(idx)
 

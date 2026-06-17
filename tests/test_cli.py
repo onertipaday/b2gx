@@ -24,8 +24,10 @@ is_a: GO:0008150
 def _setup(tmp_path):
     obo = tmp_path / "go-basic.obo"; obo.write_text(_OBO)
     idmap = tmp_path / "idmapping_selected.tab.gz"
+    # 22 tab-separated columns; we only populate AC(0), RefSeq(3), GO(6).
+    row = ["P1", "ID", "1", "WP_s.1", "", "", "GO:0009987"] + [""] * 15
     with gzip.open(idmap, "wt") as fh:
-        fh.write("P1\tID\t1\tWP_s.1\t\t\tGO:0009987\n")
+        fh.write("\t".join(row) + "\n")
     from b2gx.refdata.lookups import build_accession_index
     idx = tmp_path / "acc2go.parquet"; build_accession_index(idmap, idx)
     hits = tmp_path / "hits.tsv"

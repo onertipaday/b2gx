@@ -34,8 +34,8 @@ def map_candidates(
     subjects = filtered["sseqid"].unique().to_list()
     if not subjects:
         return {}, Coverage(n_subjects=0, n_resolved=0)
-    go_map = query_go(index_parquet, subjects)  # (refseq, go_id)
-    resolved_subjects = set(go_map["refseq"].unique().to_list())
+    go_map = query_go(index_parquet, subjects)  # (acc, go_id)
+    resolved_subjects = set(go_map["acc"].unique().to_list())
 
     n_unresolved = len(subjects) - len(resolved_subjects)
     if n_unresolved:
@@ -48,7 +48,7 @@ def map_candidates(
         )
 
     joined = filtered.join(
-        go_map.rename({"refseq": "sseqid"}), on="sseqid", how="inner"
+        go_map.rename({"acc": "sseqid"}), on="sseqid", how="inner"
     )
 
     cand_by_seq: dict[str, list[CandidateGO]] = {}
